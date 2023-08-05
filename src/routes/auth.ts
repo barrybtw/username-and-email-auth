@@ -33,6 +33,7 @@ router.post('/signup', (req, res) => {
   DB.users.push({
     passwordHash: hashedPassword,
     username: result.data.username,
+    salt: 'salt.haha',
   });
 
   logger.success('User created');

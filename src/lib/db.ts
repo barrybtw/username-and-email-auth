@@ -1,5 +1,5 @@
 type DB = {
-  users: { username: string; passwordHash: string }[];
+  users: { username: string; passwordHash: string; salt: string }[];
   sessions: {
     id: number;
     username: string;
