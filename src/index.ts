@@ -10,7 +10,7 @@ import express from 'express';
 import router from '@/routes/auth.js';
 import testRouter from '@/routes/test.js';
 import { logger } from '@/lib/logger.js';
-import { prisma } from './lib/database.js';
+import { prisma } from '@/lib/database.js';
 
 async function main() {
   const app = express();

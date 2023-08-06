@@ -1,9 +1,10 @@
-import express from 'express';
 import { signInOrUpSchema } from '@/lib/schemas.js';
-import { safeParse } from 'valibot';
-import { logger } from '../lib/logger.js';
-import auth from '@/lib/auth.js';
 import { prisma } from '@/lib/database.js';
+import { logger } from '@/lib/logger.js';
+import auth from '@/lib/auth.js';
+
+import express from 'express';
+import { safeParse } from 'valibot';
 
 const router = express.Router();
 
@@ -94,6 +95,41 @@ router.post('/signup', async (req, res) => {
   res.setHeader('X-CSRF-Token', session.csrfToken);
 
   return res.redirect(301, '/');
+});
+
+router.post('/logout', async (req, res) => {
+  const sessionToken = req.cookies.sessionToken;
+  const csrfToken = req.headers['X-CSRF-Token'];
+  if (!sessionToken) {
+    return res.status(400).json({ message: 'No session token provided' });
+  }
+
+  if (!csrfToken || typeof csrfToken !== 'string') {
+    return res.status(400).json({ message: 'No CSRF token provided' });
+  }
+
+  const validCsrfToken = await auth.compareCsrfToken(sessionToken, csrfToken);
+
+  if (!validCsrfToken) {
+    return res.status(400).json({ message: 'Invalid CSRF token' });
+  }
+
+  await prisma.session
+    .delete({
+      where: {
+        id: sessionToken,
+      },
+    })
+    .catch((e) => {
+      logger.error(e);
+      return res.status(400).json({ message: 'Invalid session token' });
+    });
+
+  res.setHeader('Set-Cookie', [
+    `sessionToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`,
+  ]);
+
+  return res.status(200).json({ message: 'Successfully logged out' });
 });
 
 export default router;
