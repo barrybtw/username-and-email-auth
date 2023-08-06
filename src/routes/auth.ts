@@ -10,8 +10,8 @@ const router = express.Router();
 
 router.post('/login', async (req, res) => {
   const credentials = {
-    username: req.body?.username,
-    password: req.body?.password,
+    username: req?.body?.username,
+    password: req?.body?.password,
   };
   logger.info(credentials.password, credentials.username);
 
@@ -42,8 +42,8 @@ router.post('/login', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
   const credentials = {
-    username: req.body?.username,
-    password: req.body?.password,
+    username: req?.body?.username,
+    password: req?.body?.password,
   };
 
   logger.info(credentials.password, credentials.username);
