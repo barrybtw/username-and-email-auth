@@ -16,7 +16,7 @@ router.post('/login', async (req, res) => {
 
   const result = safeParse(signInOrUpSchema, credentials);
   if (!result.success) {
-    logger.error(result.error.issues[0].input);
+    logger.error(result.error);
     return res.status(400).json({ message: 'Invalid username or password' });
   }
 
