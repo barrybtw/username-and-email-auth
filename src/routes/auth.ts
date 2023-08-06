@@ -98,8 +98,8 @@ router.post('/signup', async (req, res) => {
 });
 
 router.post('/logout', async (req, res) => {
-  const sessionToken = req.cookies.sessionToken;
-  const csrfToken = req.headers['X-CSRF-Token'];
+  const sessionToken = req?.cookies?.sessionToken;
+  const csrfToken = req?.headers['X-CSRF-Token'];
   if (!sessionToken) {
     return res.status(400).json({ message: 'No session token provided' });
   }
