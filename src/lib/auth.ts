@@ -77,8 +77,8 @@ const auth = {
 
     return session;
   },
-  getUserFromSession(sessionId: number) {
-    const session = prisma.session.findUnique({
+  async getUserFromSession(sessionId: number) {
+    const session = await prisma.session.findUnique({
       where: {
         id: sessionId,
       },
@@ -92,6 +92,23 @@ const auth = {
     }
 
     return session.user;
+  },
+  async compareCsrfToken(sessionId: number, csrfToken: string) {
+    const session = await prisma.session.findUnique({
+      where: {
+        id: sessionId,
+      },
+    });
+
+    if (!session) {
+      return new Error('Session does not exist');
+    }
+
+    if (session.csrfToken !== csrfToken) {
+      return new Error('CSRF tokens do not match');
+    }
+
+    return true;
   },
 };
 
