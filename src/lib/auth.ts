@@ -1,6 +1,5 @@
 import { prisma } from './database.js';
 import bcrypt from 'bcrypt';
-// Assume you already have the Database class with delete, update, and create methods for UserAccount and Session
 
 const auth = {
   async signUpNewUser(username: string, password: string) {
