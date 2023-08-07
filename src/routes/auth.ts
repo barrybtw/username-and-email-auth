@@ -1,14 +1,13 @@
 import { prisma } from '@/lib/database.js';
 import { logger } from '@/lib/logger.js';
 import * as auth from '@/lib/auth.js';
-
-import express from 'express';
+import express, { Router } from 'express';
 import { safeParse } from 'valibot';
 
-const router = express.Router();
+const router = express.Router() as Router;
 
 router.get('/session', async (req, res) => {
-  const sessionToken = req.cookies.sessionToken;
+  const sessionToken = req?.cookies?.sessionToken;
   if (!sessionToken || typeof sessionToken !== 'string') {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -148,16 +147,11 @@ router.post('/logout', async (req, res) => {
     return res.status(400).json({ message: 'Invalid CSRF token' });
   }
 
-  await prisma.session
-    .delete({
-      where: {
-        id: sessionToken,
-      },
-    })
-    .catch((e) => {
-      logger.error(e);
-      return res.status(400).json({ message: 'Invalid session token' });
-    });
+  await prisma.session.delete({
+    where: {
+      id: sessionToken,
+    },
+  });
 
   res.setHeader('Set-Cookie', [
     `sessionToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`,
