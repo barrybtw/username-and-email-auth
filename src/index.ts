@@ -38,4 +38,7 @@ main()
     logger.error(e);
     await prisma.$disconnect();
     process.exit(1);
+  })
+  .finally(() => {
+    logger.info('Goodnight!');
   });
