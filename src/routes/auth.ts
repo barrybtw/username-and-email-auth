@@ -1,7 +1,6 @@
-import { signInOrUpSchema } from '@/lib/schemas.js';
 import { prisma } from '@/lib/database.js';
 import { logger } from '@/lib/logger.js';
-import auth from '@/lib/auth.js';
+import * as auth from '@/lib/auth.js';
 
 import express from 'express';
 import { safeParse } from 'valibot';
@@ -15,16 +14,16 @@ router.post('/login', async (req, res) => {
   };
   logger.info(credentials.password, credentials.username);
 
-  const result = safeParse(signInOrUpSchema, credentials);
+  const result = safeParse(auth.credentialsSchema, credentials);
   if (!result.success) {
     logger.error(result.error);
     return res.status(400).json({ message: 'Invalid username or password' });
   }
 
-  const session = await auth.signInWithCredentials(
-    result.data.username,
-    result.data.password,
-  );
+  const session = await auth.signInUserWithCredentials({
+    username: result.data.username,
+    password: result.data.password,
+  });
 
   if (session instanceof Error) {
     logger.error(session.message);
@@ -48,7 +47,7 @@ router.post('/signup', async (req, res) => {
 
   logger.info(credentials.password, credentials.username);
 
-  const result = safeParse(signInOrUpSchema, credentials);
+  const result = safeParse(auth.credentialsSchema, credentials);
   if (!result.success) {
     logger.error(result.error.issues[0].input);
     return res.status(400).json({ message: 'Invalid username or password' });
@@ -64,19 +63,19 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ message: 'User already exists' });
   }
 
-  const newUser = await auth.signUpNewUser(
-    result.data.username,
-    result.data.password,
-  );
+  const newUser = await auth.signUpNewUserWithCredentials({
+    username: result.data.username,
+    password: result.data.password,
+  });
   if (newUser instanceof Error) {
     logger.error(newUser.message);
     return res.status(400).json({ message: newUser.message });
   }
 
-  const session = await auth.signInWithCredentials(
-    result.data.username,
-    result.data.password,
-  );
+  const session = await auth.signInUserWithCredentials({
+    username: result.data.username,
+    password: result.data.password,
+  });
 
   if (session instanceof Error) {
     logger.error(session.message);
