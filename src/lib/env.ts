@@ -4,9 +4,7 @@ import { z } from 'zod';
 
 export const env = createEnv({
   server: {
-    DATABASE_HOST: z.string().url(),
-    DATABASE_USERNAME: z.string().min(1),
-    DATABASE_PASSWORD: z.string().min(1),
+    DATABASE_URL: z.string().min(1),
   },
   /**
    * What object holds the environment variables at runtime.

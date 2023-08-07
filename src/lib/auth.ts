@@ -1,10 +1,11 @@
 import { safeParse } from 'valibot';
-import { prisma } from './database.js';
+import { db } from './drizzle.js';
 import * as argon2 from 'argon2';
 
 import { Credentials, credentialsSchema } from '@/lib/schemas.js';
-import { Session } from '@prisma/client';
 import { webcrypto } from 'crypto';
+import { Session, User } from './drizzle-schema.js';
+import { eq } from 'drizzle-orm';
 
 const signUpNewUserWithCredentials = async (credentials: Credentials) => {
   const credentialsValidation = safeParse(credentialsSchema, credentials);
@@ -13,27 +14,28 @@ const signUpNewUserWithCredentials = async (credentials: Credentials) => {
     return new Error('Invalid credentials');
   }
 
-  const userLookupByUsername = await prisma.user.findFirst({
-    where: {
-      username: credentials.username,
-    },
-  });
+  const userLookupBasedOnUsername = await db
+    .select()
+    .from(User)
+    .where(eq(User.username, credentialsValidation.data.username))
+    .execute();
 
-  if (userLookupByUsername) {
+  if (userLookupBasedOnUsername) {
     return new Error('User already exists');
   }
 
   const personalSalt = webcrypto.randomUUID();
   const hashedPassword = await argon2.hash(personalSalt + credentials.password);
 
-  const user = await prisma.user.create({
-    data: {
+  const user = await db
+    .insert(User)
+    .values({
       username: credentials.username,
       passwordHash: hashedPassword,
       passwordSalt: personalSalt,
-    },
-  });
-
+      role: 'user',
+    })
+    .execute();
   return user;
 };
 
@@ -44,18 +46,24 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
     return new Error('Invalid credentials');
   }
 
-  const userLookupByUsername = await prisma.user.findFirst({
-    where: {
-      username: credentials.username,
-    },
-  });
+  const userLookupBasedOnUsername = await db
+    .select()
+    .from(User)
+    .where(eq(User.username, credentialsValidation.data.username))
+    .execute();
 
-  if (!userLookupByUsername) {
+  if (!userLookupBasedOnUsername) {
     return new Error('User does not exist');
   }
 
-  const usersPersonalSalt = userLookupByUsername.passwordSalt;
-  const usersHashedPassword = userLookupByUsername.passwordHash;
+  const user = userLookupBasedOnUsername.at(0);
+
+  if (!user) {
+    return new Error('User does not exist');
+  }
+
+  const usersPersonalSalt = user.passwordSalt;
+  const usersHashedPassword = user.passwordHash;
   const passwordsMatch = await argon2.verify(
     usersHashedPassword,
     usersPersonalSalt + credentials.password,
@@ -68,19 +76,23 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
   const sessionToken = webcrypto.randomUUID();
   const csrfToken = webcrypto.randomUUID();
 
-  const session = await prisma.session.create({
-    data: {
-      user: {
-        connect: {
-          id: userLookupByUsername.id,
-        },
-      },
-      token: sessionToken,
-      csrfToken: csrfToken,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
-    },
+  await db.insert(Session).values({
+    csrfToken: csrfToken,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+    token: sessionToken,
+    userid: user.id,
   });
 
+  const session_query = await db
+    .select()
+    .from(Session)
+    .where(eq(Session.token, sessionToken))
+    .execute();
+
+  const session = session_query.at(0);
+  if (!session) {
+    return new Error('Something went wrong with the session creation');
+  }
   return session;
 };
 
@@ -88,11 +100,12 @@ const signOutUserFromSession = async (
   sessionId: Session['id'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findFirst({
-    where: {
-      id: sessionId,
-    },
-  });
+  const session_query = await db
+    .select()
+    .from(Session)
+    .where(eq(Session.id, sessionId))
+    .execute();
+  const session = session_query.at(0);
 
   if (!session) {
     return new Error('Session does not exist');
@@ -102,11 +115,10 @@ const signOutUserFromSession = async (
     return new Error('CSRF tokens do not match');
   }
 
-  const deletedSession = await prisma.session.delete({
-    where: {
-      id: sessionId,
-    },
-  });
+  const deletedSession = await db
+    .delete(Session)
+    .where(eq(Session.id, sessionId))
+    .execute();
 
   return deletedSession;
 };
@@ -115,25 +127,23 @@ const getUserFromSession = async (
   sessionId: Session['id'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findFirst({
-    where: {
-      id: sessionId,
-    },
-    include: {
-      user: true,
-    },
-  });
+  const session_query = await db
+    .select()
+    .from(Session)
+    .where(eq(Session.id, sessionId))
+    .innerJoin(User, eq(Session.userid, User.id))
+    .execute();
 
-  if (!session) {
+  const session = session_query.at(0)?.sessions;
+  const user = session_query.at(0)?.users;
+
+  if (!session || !user) {
     return new Error('Session does not exist');
   }
 
   if (session.expiresAt < new Date()) {
-    await prisma.session.delete({
-      where: {
-        id: session.id,
-      },
-    });
+    await db.delete(Session).where(eq(Session.id, session.id)).execute();
+
     return new Error('Session has expired');
   }
 
@@ -141,18 +151,19 @@ const getUserFromSession = async (
     return new Error('CSRF tokens do not match');
   }
 
-  return session.user;
+  return user;
 };
 
 const compareCsrfToken = async (
   sessionToken: Session['token'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findFirst({
-    where: {
-      token: sessionToken,
-    },
-  });
+  const session_query = await db
+    .select()
+    .from(Session)
+    .where(eq(Session.token, sessionToken))
+    .execute();
+  const session = session_query.at(0);
 
   if (!session) {
     return false;

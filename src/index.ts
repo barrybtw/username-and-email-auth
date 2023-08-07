@@ -8,7 +8,6 @@
 import express from 'express';
 import router from '@/routes/auth.js';
 import { logger } from '@/lib/logger.js';
-import { db } from '@/lib/drizzle.js';
 
 async function main() {
   const app = express();

@@ -1,8 +1,10 @@
-import { User, db } from '@/lib/drizzle.js';
+import { Session, User } from '@/lib/drizzle-schema.js';
+import { db } from '@/lib/drizzle.js';
 import { logger } from '@/lib/logger.js';
 import * as auth from '@/lib/auth.js';
 import express, { Router } from 'express';
 import { safeParse } from 'valibot';
+import { eq } from 'drizzle-orm';
 
 const router = express.Router() as Router;
 
@@ -12,26 +14,32 @@ router.get('/session', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  // const session = await db.query
-  const session = await db.select().from(User);
+  const session_query = (
+    await db
+      .select()
+      .from(Session)
+      .where(eq(Session.token, sessionToken))
+      .innerJoin(User, eq(Session.userid, User.id))
+      .limit(1)
+      .execute()
+  ).at(0);
 
-  if (!session) {
+  if (!session_query) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
+  const session = session_query.sessions;
+  const user = session_query.users;
+
   if (session.expiresAt < new Date()) {
-    await prisma.session.delete({
-      where: {
-        id: session.id,
-      },
-    });
+    await db.delete(Session).where(eq(Session.id, session.id)).execute();
     return res.status(301).redirect('login');
   }
 
   res.setHeader('X-CSRF-Token', session.csrfToken);
 
   return res.status(200).json({
-    user: { username: session.user.username, role: session.user.role },
+    user: { username: user.username, role: user.role },
   });
 });
 
@@ -81,12 +89,13 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ message: 'Invalid username or password' });
   }
 
-  const userLookupBasedOnUsername = await prisma.user.findFirst({
-    where: {
-      username: result.data.username,
-    },
-  });
-  if (userLookupBasedOnUsername) {
+  const userLookupBasedOnUsername = await db
+    .select()
+    .from(User)
+    .where(eq(User.username, credentials.username))
+    .execute();
+
+  if (userLookupBasedOnUsername.length > 0) {
     logger.error('User already exists');
     return res.status(400).json({ message: 'User already exists' });
   }
@@ -140,12 +149,7 @@ router.post('/logout', async (req, res) => {
   if (!validCsrfToken) {
     return res.status(400).json({ message: 'Invalid CSRF token' });
   }
-
-  await prisma.session.delete({
-    where: {
-      id: sessionToken,
-    },
-  });
+  await db.delete(Session).where(eq(Session.token, sessionToken)).execute();
 
   res.setHeader('Set-Cookie', [
     `sessionToken=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`,
