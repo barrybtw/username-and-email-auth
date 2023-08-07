@@ -5,10 +5,8 @@
  * 2. User can login /auth/login
  *
  */
-
 import express from 'express';
 import router from '@/routes/auth.js';
-import testRouter from '@/routes/test.js';
 import { logger } from '@/lib/logger.js';
 import { prisma } from '@/lib/database.js';
 
@@ -18,7 +16,6 @@ async function main() {
   app.use(express.urlencoded({ extended: true }));
 
   app.use('/auth', router);
-  app.use(testRouter);
 
   app.use((req, res, next) => {
     if (process.env.NODE_ENV != 'development' && !req.secure) {

@@ -1,6 +1,7 @@
 import { safeParse } from 'valibot';
 import { prisma } from './database.js';
-import bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
+
 import { Credentials, credentialsSchema } from '@/lib/schemas.js';
 import { Session } from '@prisma/client';
 import { webcrypto } from 'crypto';
@@ -22,11 +23,8 @@ const signUpNewUserWithCredentials = async (credentials: Credentials) => {
     return new Error('User already exists');
   }
 
-  const personalSalt = await bcrypt.genSalt(20);
-  const hashedPassword = await bcrypt.hash(
-    personalSalt + credentials.password,
-    20,
-  );
+  const personalSalt = webcrypto.randomUUID();
+  const hashedPassword = await argon2.hash(personalSalt + credentials.password);
 
   const user = await prisma.user.create({
     data: {
@@ -58,16 +56,16 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
 
   const usersPersonalSalt = userLookupByUsername.passwordSalt;
   const usersHashedPassword = userLookupByUsername.passwordHash;
-  const passwordsMatch = await bcrypt.compare(
-    usersPersonalSalt + credentials.password,
+  const passwordsMatch = await argon2.verify(
     usersHashedPassword,
+    usersPersonalSalt + credentials.password,
   );
 
   if (!passwordsMatch) {
     return new Error('Password is incorrect');
   }
 
-  const sessionToken = await bcrypt.genSalt(20);
+  const sessionToken = webcrypto.randomUUID();
   const csrfToken = webcrypto.randomUUID();
 
   const session = await prisma.session.create({
@@ -86,7 +84,10 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
   return session;
 };
 
-const signOutUserFromSession = async (sessionId: number, csrfToken: string) => {
+const signOutUserFromSession = async (
+  sessionId: Session['id'],
+  csrfToken: Session['csrfToken'],
+) => {
   const session = await prisma.session.findUnique({
     where: {
       id: sessionId,
@@ -110,7 +111,10 @@ const signOutUserFromSession = async (sessionId: number, csrfToken: string) => {
   return deletedSession;
 };
 
-const getUserFromSession = async (sessionId: number, csrfToken: string) => {
+const getUserFromSession = async (
+  sessionId: Session['id'],
+  csrfToken: Session['csrfToken'],
+) => {
   const session = await prisma.session.findUnique({
     where: {
       id: sessionId,

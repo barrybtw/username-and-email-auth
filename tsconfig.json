@@ -11,6 +11,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    "baseUrl": ".",
 
     /* Emit */
     "outDir": "./dist" /* Specify an output folder for all emitted files. */,
