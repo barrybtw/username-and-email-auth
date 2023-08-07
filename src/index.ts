@@ -20,6 +20,14 @@ async function main() {
   app.use('/auth', router);
   app.use(testRouter);
 
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV != 'development' && !req.secure) {
+      return res.redirect('https://' + req.headers.host + req.url);
+    }
+
+    next();
+  });
+
   app.listen(3000, () => {
     logger.success('Server is running on port 3000');
   });
