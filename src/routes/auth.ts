@@ -1,12 +1,12 @@
-import { Session, User } from '@/lib/drizzle-schema.js';
-import { db } from '@/lib/drizzle.js';
-import { logger } from '@/lib/logger.js';
-import * as auth from '@/lib/auth.js';
-import express, { Router } from 'express';
+import { Session, User } from '../lib/drizzle-schema.js';
+import { db } from '../lib/drizzle.js';
+import { logger } from '../lib/logger.js';
+import * as auth from '../lib/auth.js';
+import express from 'express';
 import { safeParse } from 'valibot';
 import { eq } from 'drizzle-orm';
 
-const router = express.Router() as Router;
+const router = express.Router();
 
 router.get('/session', async (req, res) => {
   const sessionToken = req?.cookies?.sessionToken;
@@ -105,6 +105,7 @@ router.post('/signup', async (req, res) => {
     password: result.data.password,
   });
   if (newUser instanceof Error) {
+    logger.error("Couldn't create user");
     logger.error(newUser.message);
     return res.status(400).json({ message: newUser.message });
   }
@@ -115,6 +116,7 @@ router.post('/signup', async (req, res) => {
   });
 
   if (session instanceof Error) {
+    logger.error("Couldn't create session");
     logger.error(session.message);
     return res.status(400).json({ message: session.message });
   }

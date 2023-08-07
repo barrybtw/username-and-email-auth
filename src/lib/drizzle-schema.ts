@@ -23,7 +23,7 @@ export const User = pgTable('users', {
   createdAt: timestamp('created_at').notNull().default(new Date()),
   updatedAt: timestamp('updated_at').notNull().default(new Date()),
 });
-export type User = InferModel<typeof User>;
+export type UserM = InferModel<typeof User>;
 export type NewUser = InferModel<typeof User, 'insert'>;
 
 export const Session = pgTable('sessions', {
@@ -36,5 +36,5 @@ export const Session = pgTable('sessions', {
     .references(() => User.id),
 });
 
-export type Session = InferModel<typeof Session>;
+export type SessionM = InferModel<typeof Session>;
 export type NewSession = InferModel<typeof Session, 'insert'>;

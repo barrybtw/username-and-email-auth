@@ -2,7 +2,7 @@ import { safeParse } from 'valibot';
 import { db } from './drizzle.js';
 import * as argon2 from 'argon2';
 
-import { Credentials, credentialsSchema } from '@/lib/schemas.js';
+import { Credentials, credentialsSchema } from './schemas.js';
 import { webcrypto } from 'crypto';
 import { Session, User } from './drizzle-schema.js';
 import { eq } from 'drizzle-orm';
@@ -96,10 +96,7 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
   return session;
 };
 
-const signOutUserFromSession = async (
-  sessionId: Session['id'],
-  csrfToken: Session['csrfToken'],
-) => {
+const signOutUserFromSession = async (sessionId: number, csrfToken: string) => {
   const session_query = await db
     .select()
     .from(Session)
@@ -123,10 +120,7 @@ const signOutUserFromSession = async (
   return deletedSession;
 };
 
-const getUserFromSession = async (
-  sessionId: Session['id'],
-  csrfToken: Session['csrfToken'],
-) => {
+const getUserFromSession = async (sessionId: number, csrfToken: string) => {
   const session_query = await db
     .select()
     .from(Session)
@@ -148,16 +142,13 @@ const getUserFromSession = async (
   }
 
   if (session.csrfToken !== csrfToken) {
-    return new Error('CSRF tokens do not match');
+    return new Error('CSRF tokens do not match lol 123');
   }
 
   return user;
 };
 
-const compareCsrfToken = async (
-  sessionToken: Session['token'],
-  csrfToken: Session['csrfToken'],
-) => {
+const compareCsrfToken = async (sessionToken: string, csrfToken: string) => {
   const session_query = await db
     .select()
     .from(Session)
