@@ -3,6 +3,7 @@ import { prisma } from './database.js';
 import bcrypt from 'bcrypt';
 import { Credentials, credentialsSchema } from '@/lib/schemas.js';
 import { Session } from '@prisma/client';
+import { webcrypto } from 'crypto';
 
 const signUpNewUserWithCredentials = async (credentials: Credentials) => {
   const credentialsValidation = safeParse(credentialsSchema, credentials);
@@ -67,7 +68,7 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
   }
 
   const sessionToken = await bcrypt.genSalt(20);
-  const csrfToken = await bcrypt.genSalt(20);
+  const csrfToken = webcrypto.randomUUID();
 
   const session = await prisma.session.create({
     data: {
@@ -121,6 +122,15 @@ const getUserFromSession = async (sessionId: number, csrfToken: string) => {
 
   if (!session) {
     return new Error('Session does not exist');
+  }
+
+  if (session.expiresAt < new Date()) {
+    await prisma.session.delete({
+      where: {
+        id: session.id,
+      },
+    });
+    return new Error('Session has expired');
   }
 
   if (session.csrfToken !== csrfToken) {

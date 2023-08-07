@@ -7,6 +7,41 @@ import { safeParse } from 'valibot';
 
 const router = express.Router();
 
+router.get('/session', async (req, res) => {
+  const sessionToken = req.cookies.sessionToken;
+  if (!sessionToken || typeof sessionToken !== 'string') {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const session = await prisma.session.findUnique({
+    where: {
+      token: sessionToken,
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (!session) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  if (session.expiresAt < new Date()) {
+    await prisma.session.delete({
+      where: {
+        id: session.id,
+      },
+    });
+    return res.status(301).redirect('login');
+  }
+
+  res.setHeader('X-CSRF-Token', session.csrfToken);
+
+  return res.status(200).json({
+    user: { username: session.user.username, role: session.user.role },
+  });
+});
+
 router.post('/login', async (req, res) => {
   const credentials = {
     username: req?.body?.username,
