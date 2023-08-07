@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "",
   "scripts": {
-    "build": "ts-node --esm -T ./src/index.ts",
     "dev": "nodemon",
     "start": "node --experimental-global-webcrypto dist/index.js"
   },
