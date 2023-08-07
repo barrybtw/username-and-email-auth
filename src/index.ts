@@ -8,7 +8,7 @@
 import express from 'express';
 import router from '@/routes/auth.js';
 import { logger } from '@/lib/logger.js';
-import { prisma } from '@/lib/database.js';
+import { db } from '@/lib/drizzle.js';
 
 async function main() {
   const app = express();
@@ -30,12 +30,7 @@ async function main() {
   });
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    logger.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+main().catch(async (e) => {
+  logger.error(e);
+  process.exit(1);
+});

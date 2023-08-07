@@ -13,7 +13,7 @@ const signUpNewUserWithCredentials = async (credentials: Credentials) => {
     return new Error('Invalid credentials');
   }
 
-  const userLookupByUsername = await prisma.user.findUnique({
+  const userLookupByUsername = await prisma.user.findFirst({
     where: {
       username: credentials.username,
     },
@@ -44,7 +44,7 @@ const signInUserWithCredentials = async (credentials: Credentials) => {
     return new Error('Invalid credentials');
   }
 
-  const userLookupByUsername = await prisma.user.findUnique({
+  const userLookupByUsername = await prisma.user.findFirst({
     where: {
       username: credentials.username,
     },
@@ -88,7 +88,7 @@ const signOutUserFromSession = async (
   sessionId: Session['id'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findUnique({
+  const session = await prisma.session.findFirst({
     where: {
       id: sessionId,
     },
@@ -115,7 +115,7 @@ const getUserFromSession = async (
   sessionId: Session['id'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findUnique({
+  const session = await prisma.session.findFirst({
     where: {
       id: sessionId,
     },
@@ -148,7 +148,7 @@ const compareCsrfToken = async (
   sessionToken: Session['token'],
   csrfToken: Session['csrfToken'],
 ) => {
-  const session = await prisma.session.findUnique({
+  const session = await prisma.session.findFirst({
     where: {
       token: sessionToken,
     },

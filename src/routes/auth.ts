@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/database.js';
+import { User, db } from '@/lib/drizzle.js';
 import { logger } from '@/lib/logger.js';
 import * as auth from '@/lib/auth.js';
 import express, { Router } from 'express';
@@ -12,14 +12,8 @@ router.get('/session', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  const session = await prisma.session.findUnique({
-    where: {
-      token: sessionToken,
-    },
-    include: {
-      user: true,
-    },
-  });
+  // const session = await db.query
+  const session = await db.select().from(User);
 
   if (!session) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -87,7 +81,7 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ message: 'Invalid username or password' });
   }
 
-  const userLookupBasedOnUsername = await prisma.user.findUnique({
+  const userLookupBasedOnUsername = await prisma.user.findFirst({
     where: {
       username: result.data.username,
     },
